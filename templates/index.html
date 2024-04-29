@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot with Photo Upload</title>
+    <link href="https://cdn.jsdelivr.net/npm/fastbootstrap@2.2.0/dist/css/fastbootstrap.min.css" rel="stylesheet" integrity="sha256-V6lu+OdYNKTKTsVFBuQsyIlDiRWiOmtC8VQ8Lzdm2i4=" crossorigin="anonymous">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center">Chatbot with Photo Upload</h1>
+        <div class="row">
+            <div class="col-md-6">
+                <h2>Chatbot</h2>
+                <div id="chat-log" class="mb-3">
+                    <!-- chat log will go here -->
+                    <div id="response"></div>
+
+                </div>
+                <input id="user-input" type="text" class="form-control" placeholder="Type a message...">
+                <button id="send-btn" class="btn btn-primary">Send</button>
+            </div>
+            <div class="col-md-6">
+                <h2>Photo Upload</h2>
+                <form id="photo-form" action="/api/upload" method="post" enctype="multipart/form-data">
+                    <div id="drop-zone" class="border p-3">
+                        <p>Drag and drop a photo here or click to upload</p>
+                        <input id="photo-input" type="file" accept="image/*" name="file">
+                    </div>
+                    <div id="photo-preview" class="mb-3">
+                        <!-- photo preview will go here -->
+                    </div>
+                    <button id="upload-btn" class="btn btn-primary">Upload</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // get the photo upload elements
+        const dropZone = document.getElementById('drop-zone');
+        const photoInput = document.getElementById('photo-input');
+        const photoPreview = document.getElementById('photo-preview');
+        const photoForm = document.getElementById('photo-form');
+        const uploadBtn = document.getElementById('upload-btn');
+
+        // handle photo upload
+//...
+
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    console.log('file dropped:', file);
+    displayPhoto(file);
+
+    // Create a FormData object and append the file
+    const formData = new FormData();
+    formData.append('file', file);
+
+    // Send the request using fetch
+    fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+    })
+   .then(response => response.json())
+   .then(data => {
+    console.log(data);
+           // Display the response in the HTML page
+        const responseText = data.choices[0].message.content;
+        console.log('Response text:', responseText);
+
+        const responseDiv = document.getElementById('response');
+           
+        responseDiv.innerText = `API response: ${responseText}`;
+    })
+   .catch(error => console.error(error));
+});
+
+photoInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    console.log('file selected:', file);
+    displayPhoto(file);
+
+    // Create a FormData object and append the file
+    const formData = new FormData();
+    formData.append('file', file);
+
+    // Send the request using fetch
+    fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+    })
+   .then(response => response.json())
+   .then(data => console.log(data))
+   .catch(error => console.error(error));
+});
+
+//...
+
+
+function displayPhoto(file) {
+    console.log('displaying photo:', file);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const imageDataUrl = event.target.result;
+        photoPreview.innerHTML = `<img src="${imageDataUrl}" class="img-fluid">`;
+    };
+    reader.readAsDataURL(file);
+}
+
+    </script>
+</body>
+</html>
