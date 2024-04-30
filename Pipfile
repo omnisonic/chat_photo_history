@@ -7,7 +7,7 @@ name = "pypi"
 pyexiftool = "*"
 openai = "*"
 requests = "*"
-flask = "*"
+streamlit = "*"
 
 [dev-packages]
 

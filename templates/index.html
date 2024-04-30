@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chatbot with Photo Upload</title>
     <link href="https://cdn.jsdelivr.net/npm/fastbootstrap@2.2.0/dist/css/fastbootstrap.min.css" rel="stylesheet" integrity="sha256-V6lu+OdYNKTKTsVFBuQsyIlDiRWiOmtC8VQ8Lzdm2i4=" crossorigin="anonymous">
+
 </head>
 <body>
     <div class="container mt-5">
@@ -23,14 +24,14 @@
             <div class="col-md-6">
                 <h2>Photo Upload</h2>
                 <form id="photo-form" action="/api/upload" method="post" enctype="multipart/form-data">
-                    <div id="drop-zone" class="border p-3">
+                    <div id="drop-zone" class="h-100 w-100 border p-3">
                         <p>Drag and drop a photo here or click to upload</p>
                         <input id="photo-input" type="file" accept="image/*" name="file">
                     </div>
                     <div id="photo-preview" class="mb-3">
                         <!-- photo preview will go here -->
                     </div>
-                    <button id="upload-btn" class="btn btn-primary">Upload</button>
+                    <!-- <button id="upload-btn" class="btn btn-primary">Upload</button> -->
                 </form>
             </div>
         </div>
@@ -91,7 +92,16 @@ photoInput.addEventListener('change', (e) => {
         body: formData
     })
    .then(response => response.json())
-   .then(data => console.log(data))
+   .then(data => {
+    console.log(data);
+           // Display the response in the HTML page
+        const responseText = data.choices[0].message.content;
+        console.log('Response text:', responseText);
+
+        const responseDiv = document.getElementById('response');
+           
+        responseDiv.innerText = `API response: ${responseText}`;
+    })
    .catch(error => console.error(error));
 });
 
