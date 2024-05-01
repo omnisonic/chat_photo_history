@@ -4,7 +4,17 @@ from os import getenv
 from openai import OpenAI
 
 # Streamlit page configuration
-st.set_page_config(page_title="ExifTool Metadata Viewer", layout="wide")
+st.set_page_config(page_title="AI CHAT with IPTC Metadata PHOTOS", layout="wide", initial_sidebar_state="expanded")
+
+css = '''
+<style>
+    [data-testid="stSidebar"]{
+        min-width: 400px;
+        max-width: 800px;
+    }
+</style>
+'''
+st.markdown(css, unsafe_allow_html=True)
 
 def display_metadata(file_path):
     # Use ExifTool to extract metadata
@@ -13,10 +23,17 @@ def display_metadata(file_path):
         return metadata
 
 # UI for file uploader
-st.title("ExifTool Metadata Viewer")
+st.title("AI CHAT with IPTC Metadata PHOTOS")
 uploaded_file = st.file_uploader("Choose an image file", type=['jpg', 'jpeg', 'png', 'gif', 'tiff'])
 
+#TODO check metadata include iptc if it does not then prompt user to upload a file with iptc.
+#TODO make sure each photo upload resets chat history.
+
+metadata_str = "No metadata found Please upload a valid image file with IPTC or Exif metadata. Ask the User to drag use photo to the Drag and drop section do upload photo, or use the Browse files button" # Default value to prompt user to upload a file with metadata.  
+
 if uploaded_file is not None:
+    # Reset the chat history
+    st.session_state.messages = []
     # Save the uploaded file to a temporary file to pass to ExifTool
     with open(uploaded_file.name, "wb") as f:
         f.write(uploaded_file.getbuffer())
@@ -30,16 +47,20 @@ if uploaded_file is not None:
         # Convert metadata to a string
         metadata_str = "\n".join(f"{k}: {v}" for data in metadata for k, v in data.items())
 
-st.title("💬 Chatbot")
-st.caption("🚀 A streamlit chatbot powered by OpenRouter AI")
+
+
+st.sidebar.title("💬 Chatbot")
+st.sidebar.caption("🚀 A streamlit chatbot powered by OpenRouter")
 
 if "messages" not in st.session_state:
-    st.session_state["messages"] = [{"role": "assistant", "content": "How can I help you?"}]
+    st.session_state["messages"] = [{"role": "assistant", "content": "Upload a photo with exif or iptc meta data and I will answer your questions"}]
 
 for msg in st.session_state.messages:
-    st.chat_message(msg["role"]).write(msg["content"])
+    st.sidebar.chat_message(msg["role"]).write(msg["content"])
 
-if prompt := st.chat_input():
+prompt = st.sidebar.chat_input("Ask a question ...")
+
+if prompt:
     if not getenv("OPENROUTER_API_KEY"):
         st.info("Please add your OpenRouter API key to environment variable OPENROUTER_API_KEY to continue.")
         st.stop()
@@ -49,11 +70,11 @@ if prompt := st.chat_input():
         api_key=getenv("OPENROUTER_API_KEY"),
     )
     st.session_state.messages.append({"role": "user", "content": prompt})
-    st.chat_message("user").write(prompt)
+    st.sidebar.chat_message("user").write(prompt)
     response = client.chat.completions.create(
         model="mistralai/mixtral-8x7b-instruct",
-        messages=[{"role": "system", "content": f"You are answering questions about photo metadata. The metadata is: {metadata_str}."}] + st.session_state.messages + [{"role": "user", "content": prompt}],
+        messages=[{"role": "system", "content": f"You are answering questions about photo metadata. You specialize IPTC data.  You should alert the user if there is no IPTC DATA. The metadata is: {metadata_str}."}] + st.session_state.messages + [{"role": "user", "content": prompt}],
     )
     msg = response.choices[0].message.content
     st.session_state.messages.append({"role": "assistant", "content": msg})
-    st.chat_message("assistant").write(msg)
+    st.sidebar.chat_message("assistant").write(msg)
