@@ -52,7 +52,7 @@ if prompt := st.chat_input():
     st.chat_message("user").write(prompt)
     response = client.chat.completions.create(
         model="mistralai/mixtral-8x7b-instruct",
-        messages=[{"role": "system", "content": "You are answering questions about photo metadata."}, {"role": "context", "content": metadata_str}] + st.session_state.messages + [{"role": "user", "content": prompt}],
+        messages=[{"role": "system", "content": f"You are answering questions about photo metadata. The metadata is: {metadata_str}."}] + st.session_state.messages + [{"role": "user", "content": prompt}],
     )
     msg = response.choices[0].message.content
     st.session_state.messages.append({"role": "assistant", "content": msg})
