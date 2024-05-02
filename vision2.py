@@ -26,7 +26,7 @@ response = requests.post(
     "content": [
       {
         "type": "text",
-        "text": "What's in this image?"
+        "text": "Analyze the image and provide a comprehensive description, including: Scene understanding: What is happening in the scene? What are the main objects, people, and activities depicted? Object detection: Identify and list the individual objects present in the image, including their types, quantities, and locations. Image classification: What is the dominant theme or category of the image? What tags or labels would you assign to the image? Image analysis: Describe the image's characteristics, including colors, textures, shapes, and any notable features. Entity recognition: Identify specific entities, such as people, organizations, or locations, depicted in the image. Contextual information: Provide any relevant contextual information about the image, such as the time of day, weather, or setting. Please provide a detailed and structured response, using headings and bullet points where necessary, to help me understand the image and its contents. Approximate date of the image"
       },
       {
         "type": "image_url",
@@ -39,5 +39,5 @@ response = requests.post(
 ]
   })
 )
-
-print(response.json())
+# get the content from the response
+print(response.json()["choices"][0]["message"]["content"])

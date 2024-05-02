@@ -8,6 +8,10 @@ from io import BytesIO
 from urllib.parse import urlparse
 import tempfile
 import mimetypes
+import vision_func
+
+
+api_key = getenv("OPENROUTER_API_KEY")
 
 # Streamlit page configuration
 st.set_page_config(page_title="AI CHAT with Metadata PHOTOS", layout="wide", initial_sidebar_state="expanded")
@@ -153,11 +157,17 @@ st.sidebar.header("Load A Sample with richly Embeded Metadata")
 # Display a sample photo in the sidebar
 st.sidebar.image("sample_photo.jpg", width=200)
 
+
+sidebar_button_clicked = False
+vision_response = ''
 if st.sidebar.button("Load Sample Photo"):
     # st.image(None)
+    sidebar_button_clicked = True
     uploaded_image = None
     st.session_state.sample_photo = "sample_photo.jpg"
     st.session_state.messages = []
+
+
 
 # Create a reset button
 if st.sidebar.button("Reset Everything"):
@@ -247,21 +257,36 @@ def get_current_metadata_variable():
     
     return image_metadata
 
+# streamlit.py (255-293)
+
+
 image_metadata = get_current_metadata_variable()
 
-print(f"the image_metadata before passed to request {image_metadata}")
+if sidebar_button_clicked:
+    with st.spinner("Loading..."):
+        if st.session_state.sample_photo is not None:
+            image_path = st.session_state.sample_photo
+            vision_response = vision_func.ai_vision(image_path, api_key)
+
+
+print(f"the image_metadata before passed to request {type(image_metadata)}")
 
 
 st.title("💬 Chatbot")
 st.caption("🚀 A streamlit chatbot powered by OpenRouter")
 
 if "messages" not in st.session_state:
-    st.session_state["messages"] = [{"role": "assistant", "content": "Upload a photo with meta data and I will answer your questions"}]
+    st.session_state["messages"] = []
+
+
+
+st.session_state["messages"].append({"role": "assistant", "content": vision_response})
+
 
 for msg in st.session_state.messages:
     st.chat_message(msg["role"]).write(msg["content"])
 
-prompt = st.chat_input("Ask a question ...")
+prompt = st.chat_input("Ask a question...")
 
 if prompt:
     if not getenv("OPENROUTER_API_KEY"):
@@ -270,7 +295,7 @@ if prompt:
 
     client = OpenAI(
         base_url="https://openrouter.ai/api/v1",
-        api_key=getenv("OPENROUTER_API_KEY"),
+        api_key=api_key,
     )
     st.session_state.messages.append({"role": "user", "content": prompt})
     st.chat_message("user").write(prompt)
