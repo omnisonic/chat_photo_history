@@ -6,6 +6,8 @@ import pathlib
 import requests
 from io import BytesIO
 from urllib.parse import urlparse
+import tempfile
+import mimetypes
 
 # Streamlit page configuration
 st.set_page_config(page_title="AI CHAT with Metadata PHOTOS", layout="wide", initial_sidebar_state="expanded")
@@ -20,8 +22,6 @@ css = '''
 '''
 st.markdown(css, unsafe_allow_html=True)
 
-# Display a sample photo in the sidebar
-st.sidebar.image("sample_photo.jpg", width=200)
 
 
 
@@ -31,42 +31,73 @@ st.title("AI CHAT with IPTC Metadata PHOTOS")
 # Download file
 file_obj = None
 
+# Give a title
+st.sidebar.header("Load From your Device")
+uploaded_image = st.sidebar.file_uploader("Choose an image file", type=['jpg', 'jpeg', 'png', 'gif', 'tiff'])
+if uploaded_image is not None:
+    st.session_state.clear()
+
 @st.cache_data
-def download_file(url):
+def get_file_from_url(url):
     headers = {'User-Agent': 'My Streamlit App (https://chat-photo-history.streamlit.app/)'}
     
     try:
         response = requests.get(url, headers=headers, stream=True)
         response.raise_for_status()  # Raise an exception for bad status codes
-        return BytesIO(response.content)
+        
+        # Get the file extension from the response headers
+        content_type = response.headers.get('Content-Type')
+        file_ext = mimetypes.guess_extension(content_type)
+        if not file_ext:
+            file_ext = '.jpg'  # default to JPEG if no extension is found
+        
+        # Return the file contents as bytes
+        return response.content, file_ext
     except requests.exceptions.RequestException as e:
         st.error("Error downloading image: {}".format(e))
-        return None
+        return None, None
 
 
 
+@st.cache_data
+def get_metadata(image_file):
+    # Use ExifTool to extract metadata
+    with ExifToolHelper() as et:
+        metadata = et.get_metadata(image_file)
+        print(f" inside get_metadata function ")
+        return metadata
+
+
+st.sidebar.header("Load From your a url")
+
+metadata_from_url_image_Outside = None
 # upload from url
-with st.form("url_form"):
-    # st.session_state.clear()
+with st.sidebar.form("url_form"):
+
     url = st.text_input("Enter a URL")
     submit_url = st.form_submit_button("Submit")
 
-    print(f"url from inside with st.form: {url}")
-
     if submit_url:
-        print(f"submit url from inside with submit_url: {submit_url}")
+        
+        if uploaded_image is not None:
+            uploaded_image.clear()
 
+        st.session_state.clear()
+        if "sample_photo" in st.session_state:
+            del st.session_state.sample_photo
 
-        print("URL submission successful.")  # Print a message when the URL is submitted
+        
+        print("URL submission successful.")
+
         # Validate URL
         try:
             result = urlparse(url)
             if not all([result.scheme, result.netloc]):
                 raise ValueError("Invalid URL")
-            print("URL is valid.")  # Print a message when the URL is valid
+            print("URL is valid.")
         except ValueError:
             st.error("Invalid URL. Please enter a valid URL.")
-            print("Invalid URL entered.")  # Print an error message when the URL is invalid
+            print("Invalid URL entered.")
             # st.stop()
 
         # Check if the URL has a valid image extension
@@ -75,7 +106,7 @@ with st.form("url_form"):
         has_valid_extension = any(url_lower.endswith(ext) for ext in image_extensions)
         if not has_valid_extension:
             st.error("Invalid image URL. Please enter a URL with a valid image extension (jpg, jpeg, png, gif, bmp).")
-            print("URL does not have a valid image extension.")  # Print an error message when the URL does not have a valid image extension
+            print("URL does not have a valid image extension.")
             # st.stop()
 
         # Check if the URL points to an image
@@ -84,102 +115,153 @@ with st.form("url_form"):
             response.raise_for_status()  # Raise an exception for bad status codes
             if 'image' not in response.headers.get('Content-Type'):
                 st.error("Invalid image URL. Please enter a direct image URL.")
-                print("URL does not point to an image.")  # Print an error message when the URL does not point to an image
+                print("URL does not point to an image.")
                 # st.stop()
         except requests.exceptions.RequestException as e:
             st.error("Error downloading image: {}".format(e))
-            print("Error downloading image:", e)  # Print an error message when downloading the image fails
+            print("Error downloading image:", e)
             # st.stop()
 
-        st.image(url, caption="sample Image", use_column_width=True)
-        print("Image displayed successfully.")  # Print a message when the image is displayed
-
-        # download file
+        # Download the image and get metadata
         try:
-            file_obj = download_file(url)
-            st.write("File downloaded successfully!")
-            print("File downloaded successfully!")  # Print a message when the file is downloaded successfully
-            # st.write("File object:", file_obj)
-            # st.markdown(f"![Alt Text]({url})")
+            file_contents, file_ext = get_file_from_url(url)
+            if file_contents is not None:
+                with tempfile.NamedTemporaryFile(suffix=file_ext) as temp_file:
+                    temp_file.write(file_contents)
+                    temp_file.seek(0)  # rewind the file pointer to the beginning
+                    metadata = get_metadata(temp_file.name)
+                    metadata_from_url_image_Outside = metadata
+                    st.session_state.image_url = url
+                    st.session_state.metadata_from_url_image_Outside = metadata_from_url_image_Outside
+                    print("File downloaded successfully!")
+            else:
+                st.error("Failed to download image")
+                print("Failed to download image")
         except Exception as e:
             st.error(f"Error: {e}")
-            print("Error downloading file:", e)  # Print an error message when downloading the file fails
+            print("Error downloading file:", e)
 
 
 
-# upload a fie from local drive
-uploaded_file = st.file_uploader("Choose an image file", type=['jpg', 'jpeg', 'png', 'gif', 'tiff'])
-
-def display_metadata(file_path):
-    # Use ExifTool to extract metadata
-    with ExifToolHelper() as et:
-        metadata = et.get_metadata(file_path)
-        return metadata
-    
 
 # metadata_str = "No metadata found Please upload a valid image file with IPTC or Exif metadata. Ask the User to drag use photo to the Drag and drop section do upload photo, or use the Browse files button" # Default value to prompt user to upload a file with metadata.  
-# if st.sidebar.button("Advanced AI Vision analysis"):
+# if st.sidebar.button("Advanced AI Vision analysis
 
 
-# Add a button to load the sample photo
+st.sidebar.header("Load A Sample with richly Embeded Metadata")
+
+# Display a sample photo in the sidebar
+st.sidebar.image("sample_photo.jpg", width=200)
+
 if st.sidebar.button("Load Sample Photo"):
-    st.session_state.clear()
-
+    # st.image(None)
+    uploaded_image = None
     st.session_state.sample_photo = "sample_photo.jpg"
     st.session_state.messages = []
-    # Upload the sample image file
-    st.image("sample_photo.jpg", caption="sample Image", use_column_width=True)
 
-# if "sample_photo" in st.session_state:
-#     st.image(st.session_state.sample_photo, caption="sample Image", use_column_width=True)
+# Create a reset button
+if st.sidebar.button("Reset Everything"):
+    st.session_state.clear()
+    st.experimental_rerun()
+
+sample_photo_metadata = None
+if "sample_photo" in st.session_state:
+    
+    if "image_url" in st.session_state:
+        del st.session_state.image_url
+    if "uploaded" in st.session_state:    
+        del st.session_state.uploaded_image
+        st.experimental_rerun()  # Force Streamlit to re-run and update the UI
+
+    print(f"""
+            
+            image_url deleted, line 148
+            
+            """)
+
+    with open(st.session_state.sample_photo, "rb") as f:
+        sample_image_data = f.read()
+    st.sidebar.image(sample_image_data, caption="Sample Image", use_column_width=True)
+    # Pass the sample_photo to the get_metadata function
+    sample_photo_metadata = get_metadata(st.session_state.sample_photo)
+
+# Display the persisted image and metadata
+if "image_url" in st.session_state:
+
+    st.sidebar.image(st.session_state.image_url, caption="Sample Image", use_column_width=True)
+
 
 # else:
 #     metadata_str = "No metadata found Please upload a valid image file with metadata. Ask the User to drag use photo to the Drag and drop section do upload photo, or use the Browse files button" # Default value to prompt user to upload a file with metadata.  
 
 
 
-if uploaded_file is not None:
+
+metadata_from_uploaded_image = None
+if uploaded_image is not None:
     # Reset the chat history
     st.session_state.messages = []
     # Save the uploaded file to a temporary file to pass to ExifTool
-    with open(uploaded_file.name, "wb") as f:
-        f.write(uploaded_file.getbuffer())
+    with open(uploaded_image.name, "wb") as f:
+        f.write(uploaded_image.getbuffer())
 
     # Display the uploaded image
-    st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
+    st.sidebar.image(uploaded_image, caption="Uploaded Image", use_column_width=True)
 
     # Fetch and display the metadata
-    metadata = display_metadata(uploaded_file.name)
-    if metadata:
+
+    metadata_from_uploaded_image = get_metadata(uploaded_image.name)
+    if metadata_from_uploaded_image is not None:
         # Convert metadata to a string
-        metadata_str = "\n".join(f"{k}: {v}" for data in metadata for k, v in data.items())
-
-# elif file_obj is not None:
-#     # Reset the chat history
-#     st.session_state.messages = []
-#     metadata = display_metadata(file_obj)
-#     if metadata:
-#         # Convert metadata to a string  
-#         metadata_str = "\n".join(f"{k}: {v}" for data in metadata for k, v in data.items())
-
-
-# else:
-#     sample_photo = "sample_photo.jpg"
-#     metadata = display_metadata(sample_photo)
-#     metadata_str = "\n".join(f"{k}: {v}" for data in metadata for k, v in data.items())
+        metadata_str = "\n".join(f"{k}: {v}" for data in metadata_from_uploaded_image for k, v in data.items())
 
 
 
-st.sidebar.title("💬 Chatbot")
-st.sidebar.caption("🚀 A streamlit chatbot powered by OpenRouter")
+print(f" meta data string from url image: {metadata_from_url_image_Outside}")
+
+
+def get_current_metadata_variable():
+    """
+    Retrieves metadata from one of three possible sources: 
+    metadata_from_url_image_Outside, sample_photo, or metadata_from_other_source.
+    
+    The function checks which of the three variables is not None and assigns its value to the metadata variable.
+    If all variables are None, it displays an error message.
+ 
+    Returns:
+    metadata (dict): The metadata retrieved from one of the three sources.
+    
+    """
+    if "metadata_from_url_image_Outside" in st.session_state:
+        image_metadata = st.session_state.metadata_from_url_image_Outside
+    # if metadata_from_url_image_Outside is not None:
+    #     image_metadata = metadata_from_url_image_Outside
+    elif metadata_from_uploaded_image is not None:
+        image_metadata = metadata_from_uploaded_image
+    elif sample_photo_metadata is not None:
+        image_metadata = sample_photo_metadata
+
+    else:
+        image_metadata = None
+
+    
+    return image_metadata
+
+image_metadata = get_current_metadata_variable()
+
+print(f"the image_metadata before passed to request {image_metadata}")
+
+
+st.title("💬 Chatbot")
+st.caption("🚀 A streamlit chatbot powered by OpenRouter")
 
 if "messages" not in st.session_state:
     st.session_state["messages"] = [{"role": "assistant", "content": "Upload a photo with meta data and I will answer your questions"}]
 
 for msg in st.session_state.messages:
-    st.sidebar.chat_message(msg["role"]).write(msg["content"])
+    st.chat_message(msg["role"]).write(msg["content"])
 
-prompt = st.sidebar.chat_input("Ask a question ...")
+prompt = st.chat_input("Ask a question ...")
 
 if prompt:
     if not getenv("OPENROUTER_API_KEY"):
@@ -191,11 +273,11 @@ if prompt:
         api_key=getenv("OPENROUTER_API_KEY"),
     )
     st.session_state.messages.append({"role": "user", "content": prompt})
-    st.sidebar.chat_message("user").write(prompt)
+    st.chat_message("user").write(prompt)
     response = client.chat.completions.create(
         model="google/gemini-pro-vision",
-        messages=[{"role": "system", "content": f"You are answering questions about photo metadata. You specialize photo meta data.  You should alert the user if there is no meta DATA. The metadata is: {metadata_str}."}] + st.session_state.messages + [{"role": "user", "content": prompt}],
+        messages=[{"role": "system", "content": f"You are answering questions about photo metadata. You specialize photo meta data.  You should alert the user if there is no meta DATA. The metadata is: {image_metadata}."}] + st.session_state.messages + [{"role": "user", "content": prompt}],
     )
     msg = response.choices[0].message.content
     st.session_state.messages.append({"role": "assistant", "content": msg})
-    st.sidebar.chat_message("assistant").write(msg)
+    st.chat_message("assistant").write(msg)
