@@ -6,13 +6,21 @@ from PIL import Image
 from exiftool import ExifToolHelper
 from exiftool.exceptions import ExifToolException
 import uuid
+import json
 
+# Read the JSON file containing the metadata tags and placeholders
+with open('metadata_tags.json') as f:
+    optional_metadata_tags = json.load(f)
 
 # Create a Streamlit app
 st.title("Image Metadata Editor")
 
 # Create a container at the top of the screen
 error_container = st.container()
+
+download_button_container = st.container()
+
+save_placeholder = st.empty()
 
 # Get the image file from the user
 image_file = st.file_uploader("Select an image file", type=["jpg", "jpeg"])
@@ -27,6 +35,26 @@ unwritable_tags = [
     'APP14:DCTEncodeVersion', 'APP14:APP14Flags0', 'APP14:APP14Flags1', 'APP14:ColorTransform', 
     'Composite:ImageSize', 'Composite:Megapixels','File:FileName','File:Directory','File:FileModifyDate','File:FilePermissions','File:ExifByteOrder',
 ]
+
+
+# Create a sidebar with a checkbox to toggle the new field input
+# show_new_field_input = st.sidebar.checkbox("Add New Field")
+
+st.sidebar.header('Select Metadata to add to your uploaded Image file')
+
+
+checked_metadata_tags = {}
+
+# Loop through the metadata tags and create a new field for each one
+for tag_key, placeholder in optional_metadata_tags.items():
+    tag_key_display = tag_key.replace(":", " ")
+    new_field_checkbox = st.sidebar.checkbox(tag_key_display) 
+    if new_field_checkbox:
+        new_field_value = st.text_input(tag_key_display, placeholder=placeholder)
+        checked_metadata_tags[tag_key] = new_field_value
+
+
+
 
 if image_file:
     # Convert the UploadedFile to bytes
@@ -47,57 +75,69 @@ if image_file:
           # Create a form for each metadata tag
             form = st.form("Edit Metadata")
             form_fields = {}
+            # If the checkbox is checked, show the new field input fields
+
+
             for d in metadata:
                 for k, v in d.items():
                     if k not in unwritable_tags:
-                        # Create a form field for the tag
-                        if k.startswith("EXIF"):
-                            field_type = st.text_input
-                        elif k.startswith("IPTC"):
-                            field_type = st.text_area
-                        elif k.startswith("XMP"):
-                            field_type = st.text_input
-                        elif k.startswith("XMP-mwg-rs"):
-                            field_type = st.number_input    
+                        if ":" in k:
+                            k_display = k.replace(":", " ")
                         else:
-                            field_type = st.text_input
+                            k_display = k
 
-                        form_field = field_type(k.replace(":", " "), value=v)# the colon in the data is causing part if the key name to be truncated do we replace it with a blank space.
+                        if k.startswith("EXIF"):
+                            form_field = st.text_input(k_display, value=v)
+                        elif k.startswith("IPTC"):
+                            form_field = st.text_area(k_display, value=v)
+                        elif k.startswith("XMP"):
+                            form_field = st.text_input(k_display, value=v)
+                        elif k.startswith("XMP-mwg-rs"):
+                            form_field = st.number_input(k_display, value=v)
+                        else:
+                            form_field = st.text_input(k_display, value=v)
+
                         form_fields[k] = form_field
 
             # Save the changes
+
             if form.form_submit_button("Save Changes"):
+                
                 updated_tags = {}
                 for k, form_field in form_fields.items():
                     updated_tags[k] = form_field
-
+                for k, form_filed in checked_metadata_tags.items():
+                    updated_tags[k] = form_field
                 try:
                     # Save the file with the unique filename
                     et.set_tags(file_path, tags=updated_tags, params=None)
-                    st.success("Successfully updated metadata")
+                    download_button_container.success("Successfully updated metadata", icon="😁")
                     
                 except ExifToolException as e:
                     error_container.error(f"""
-                                args ={e.args}
-                                stderr ={e.stderr}
+                      
                                 Error executing ExifTool: {e}""")
                     print(f" args ={e.args}") # more detail on errors
                     print(f" stderr ={e.stderr}") # more detail on errors
 
                 try:
                     # Create a download button with the unique file name
-                    st.markdown("#### Download Modified Image")
+                    download_button_container.markdown("#### Download Modified Image")
                     # streamilit download button
                     # Assuming file_path is the path to your temporary file
+                    def download_pressed():
+                        download_button_container.success("Image Downloaded!", icon="😁")
+
                     with open(file_path, "rb") as file:
-                        btn = st.download_button(
+                        btn = download_button_container.download_button(
                             label="Download image",
                             data=file,
                             file_name=unique_filename,  # You can choose a suitable file name
-                            mime="image/jpg"  # Make sure to use the correct MIME type for your file
+                            mime="image/jpg",  # Make sure to use the correct MIME type for your file
+                            on_click=download_pressed
                         )
-          
-                        st.success("Changes saved and image downloaded!")
+
+
 
                 except Exception as e:
                     error_container.error(f'after open file for downloading{e}')
