@@ -47,9 +47,20 @@ st.write("""
 Contributions are welcome! If you'd like to help improve the chatbot or add new features, please submit a pull request.
 """)
 
-st.header("Acknowledgments")
-st.write("""
-* Gemini Image Processing for providing the image analysis functionality
-* OpenRouter for providing the AI API
-* Streamlit for providing the chatbot framework
-""")
+## 👏 Acknowledgments
+st.write("Special thanks to:")
+st.write("🙏 **Google Gemini Pro API**: for providing the image analysis functionality")
+st.write("🙏 **OpenRouter**: for routing the API")
+st.write("🙏 **Streamlit**: for providing the chatbot framework")
+st.write("🙏 **PyExifTool**: for providing a Python interface to Exiftool")
+st.write("🙏 **Exiftool**: for providing a comprehensive metadata extraction tool")
+## Additional
+st.header("Additional Metadata Extraction")
+st.write("The chatbot also extracts metadata from images using the [IPTC](https://iptc.org/standards/photo-metadata/) standards for image metadata.")
+st.write("Examples of the metadata that can be extracted or written:")
+st.write("*   **IPTC.Caption**: Extracting the image caption or description")
+st.write("*   **IPTC.Keywords**: Extracting keywords or tags associated with the image")
+st.write("*   **IPTC.Credit**: Extracting the credit or attribution information for the image creator")
+st.write("*   **IPTC.Contact**: Extracting the contact information for the image creator or owner")
+
+st.write("By incorporating IPTC metadata, the chatbot provides a more comprehensive understanding of the image content, including its context, meaning, and usage.")

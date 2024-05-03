@@ -5,8 +5,20 @@ import io
 from PIL import Image
 from exiftool import ExifToolHelper
 from exiftool.exceptions import ExifToolException
-import uuid
 import json
+
+
+st.set_page_config(
+    page_title="Image Metadata Viewer and Editor",
+    page_icon="📸",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': 'https://github.com/omnisonic/chat_photo_history',
+        'Report a bug': "https://github.com/omnisonic/chat_photo_history/issues",
+        'About': "#  Upload an image to view and edit metadata!"
+    }
+)
 
 # Read the JSON file containing the metadata tags and placeholders
 with open('metadata_tags.json') as f:

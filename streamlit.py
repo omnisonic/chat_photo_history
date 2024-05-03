@@ -10,11 +10,15 @@ import tempfile
 import mimetypes
 import vision_func
 
+header = st.container()
+# two columns
+col1, col2, = st.columns(2)
+
 
 api_key = getenv("OPENROUTER_API_KEY")
 
 # Streamlit page configuration
-st.set_page_config(page_title="AI CHAT with Metadata PHOTOS", layout="wide", initial_sidebar_state="expanded")
+# st.set_page_config(page_title="AI CHAT with Metadata PHOTOS", layout="wide", initial_sidebar_state="expanded")
 
 css = '''
 <style>
@@ -27,16 +31,22 @@ css = '''
 st.markdown(css, unsafe_allow_html=True)
 
 
+if 'vision_response' not in st.session_state:
+    st.session_state.vision_response = None
+vision_response = None
 
 
+with header:
 # UI for file uploader
-st.title("AI CHAT with IPTC Metadata PHOTOS")
+    st.title("AI CHAT with IPTC Metadata PHOTOS")
 
 # Download file
 file_obj = None
 
 # Give a title
 st.sidebar.header("Load From your Device")
+
+
 uploaded_image = st.sidebar.file_uploader("Choose an image file", type=['jpg', 'jpeg', 'png', 'gif', 'tiff'])
 if uploaded_image is not None:
     st.session_state.clear()
@@ -159,7 +169,7 @@ st.sidebar.image("sample_photo.jpg", width=200)
 
 
 sidebar_button_clicked = False
-vision_response = ''
+
 if st.sidebar.button("Load Sample Photo"):
     # st.image(None)
     sidebar_button_clicked = True
@@ -191,14 +201,28 @@ if "sample_photo" in st.session_state:
 
     with open(st.session_state.sample_photo, "rb") as f:
         sample_image_data = f.read()
-    st.sidebar.image(sample_image_data, caption="Sample Image", use_column_width=True)
-    # Pass the sample_photo to the get_metadata function
+
+
+
+
+    with col1:    
+        st.image(sample_image_data, caption="Sample Image", use_column_width=True)
+
+        with st.spinner("Loading..."):
+            if st.button("Submit AI Vision Analysis"):
+                vision_response = vision_func.ai_vision("sample_photo.jpg", api_key)
+                st.session_state.vision_response = vision_response
+        
+        if st.session_state.vision_response is not None:
+            st.write(st.session_state.vision_response)
+            vision_response = st.session_state.vision_response # reassign to pass to chat
+
     sample_photo_metadata = get_metadata(st.session_state.sample_photo)
 
 # Display the persisted image and metadata
 if "image_url" in st.session_state:
-
-    st.sidebar.image(st.session_state.image_url, caption="Sample Image", use_column_width=True)
+    with col1:
+        st.image(st.session_state.image_url, caption="Sample Image", use_column_width=True)
 
 
 # else:
@@ -215,8 +239,9 @@ if uploaded_image is not None:
     with open(uploaded_image.name, "wb") as f:
         f.write(uploaded_image.getbuffer())
 
-    # Display the uploaded image
-    st.sidebar.image(uploaded_image, caption="Uploaded Image", use_column_width=True)
+    with col1:
+        # Display the uploaded image
+        st.image(uploaded_image, caption="Uploaded Image", use_column_width=True)
 
     # Fetch and display the metadata
 
@@ -262,47 +287,65 @@ def get_current_metadata_variable():
 
 image_metadata = get_current_metadata_variable()
 
-if sidebar_button_clicked:
-    with st.spinner("Loading..."):
-        if st.session_state.sample_photo is not None:
-            image_path = st.session_state.sample_photo
-            vision_response = vision_func.ai_vision(image_path, api_key)
+# if sidebar_button_clicked:
+#     with st.spinner("Loading..."):
+#         if st.session_state.sample_photo is not None:
+#             image_path = st.session_state.sample_photo
+#             vision_response = vision_func.ai_vision(image_path, api_key)
 
 
 # print(f"the image_metadata before passed to request {type(image_metadata)}")
 
 
-st.title("💬 Chatbot")
-st.caption("🚀 A streamlit chatbot powered by OpenRouter")
-
-if "messages" not in st.session_state:
-    st.session_state["messages"] = []
+with header:
+    st.caption("🚀 AI Powered Photo Tool by JCTECH ")
 
 
+with col2:
+    st.caption("💬 Chat with the photo🖼️")
 
-st.session_state["messages"].append({"role": "assistant", "content": vision_response})
+
+    with st.container(height=600,border=None):
 
 
-for msg in st.session_state.messages:
-    st.chat_message(msg["role"]).write(msg["content"])
+        # Add a comment to initialize the messages list
+        # Initialize the messages list
+        if "messages" not in st.session_state:
+            st.session_state["messages"] = []  # Initialize an empty list for chat messages
 
-prompt = st.chat_input("Ask a question...")
 
-if prompt:
-    if not getenv("OPENROUTER_API_KEY"):
-        st.info("Please add your OpenRouter API key to environment variable OPENROUTER_API_KEY to continue.")
-        st.stop()
+        prompt = st.chat_input("Ask a question...")
 
-    client = OpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=api_key,
-    )
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    st.chat_message("user").write(prompt)
-    response = client.chat.completions.create(
-        model="google/gemini-pro-vision",
-        messages=[{"role": "system", "content": f"You are answering questions about photo metadata. You specialize photo meta data.  You should alert the user if there is no meta DATA. The metadata is: {image_metadata}."}] + st.session_state.messages + [{"role": "user", "content": prompt}],
-    )
-    msg = response.choices[0].message.content
-    st.session_state.messages.append({"role": "assistant", "content": msg})
-    st.chat_message("assistant").write(msg)
+        if prompt:
+            # st.session_state["messages"].append({"role": "assistant", "content": vision_response})
+
+            for msg in st.session_state.messages:
+                st.chat_message(msg["role"]).write(msg["content"])
+            if not getenv("OPENROUTER_API_KEY"):
+                st.info("Please add your OpenRouter API key to environment variable OPENROUTER_API_KEY to continue.")
+                st.stop()
+
+            client = OpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=api_key,
+            )
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            st.chat_message("user").write(prompt)
+            response = client.chat.completions.create(
+                model="google/gemini-pro-vision",
+                messages=[{"role": "system", "content": f"You are answering questions about photo metadata. You specialize photo meta data.  You should alert the user if there is no meta DATA. The metadata is: {image_metadata}. your vision response is:{vision_response} "}] + st.session_state.messages + [{"role": "user", "content": prompt}],
+            )
+            msg = response.choices[0].message.content
+            st.session_state.messages.append({"role": "assistant", "content": msg})
+            st.chat_message("assistant").write(msg)
+
+        # Create a button to clear the chat
+    clear_chat_button = st.button("Rest Chat")
+
+    # Check if the button is clicked
+    if clear_chat_button:
+        # Clear the chat by removing all messages
+        st.session_state.messages.clear()
+        st.session_state.messages = []
+        # st.cache.clear()
+        st.experimental_rerun()
