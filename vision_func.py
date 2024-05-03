@@ -7,7 +7,7 @@ from openai import OpenAI
 
 
 def ai_vision(image_path, api_key):
-    print(f"\n ai vision func called \n ")
+    # print(f"\n ai vision func called \n ")
     with open(image_path, "rb") as f:
         image_data = f.read()
 

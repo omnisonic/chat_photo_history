@@ -227,7 +227,7 @@ if uploaded_image is not None:
 
 
 
-print(f" meta data string from url image: {metadata_from_url_image_Outside}")
+# print(f" meta data string from url image: {metadata_from_url_image_Outside}")
 
 
 def get_current_metadata_variable():
@@ -269,7 +269,7 @@ if sidebar_button_clicked:
             vision_response = vision_func.ai_vision(image_path, api_key)
 
 
-print(f"the image_metadata before passed to request {type(image_metadata)}")
+# print(f"the image_metadata before passed to request {type(image_metadata)}")
 
 
 st.title("💬 Chatbot")
