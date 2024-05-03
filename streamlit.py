@@ -72,7 +72,7 @@ def get_metadata(image_file):
         return metadata
 
 
-st.sidebar.header("Load From your a url")
+st.sidebar.header("Load From URl")
 
 metadata_from_url_image_Outside = None
 # upload from url
