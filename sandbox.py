@@ -13,7 +13,7 @@ import tempfile
 #Streamlit page configuration
 st.set_page_config(page_title="AI CHAT with Metadata PHOTOS", layout="wide", initial_sidebar_state="expanded")
 
-# st.write(st.session_state) 
+st.write(st.session_state) 
 
 header = st.container()
 # two columns
@@ -103,7 +103,7 @@ with st.sidebar.form("url_form"):
 
     url = st.text_input("Enter a URL")
     submit_url = st.form_submit_button("Submit")
-    # st.write(submit_url)
+    st.write(submit_url)
     if submit_url:
   
         print(" line 109, URL form submission activated.")
@@ -244,7 +244,9 @@ with col2:
         st.session_state["messages"] = []  # Initialize an empty list for chat messages
         print(" Line ~250 session state messages initialized")
 
-    if not st.session_state.messages:
+    if st.session_state.metadata == None:
+
+        with message_container.chat_message("assistant"):           
    
             st.session_state.messages.append({"role": "assistant", "content": "Hello 👋"})
             st.session_state.messages.append({"role": "assistant", "content": "I am a photo analysis bot 🤖"})
@@ -290,4 +292,4 @@ with col2:
         st.rerun()
         st.succsesss("Chat cleared")
 
-# st.write(st.session_state) 
+st.write(st.session_state) 

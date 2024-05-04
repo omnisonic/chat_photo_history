@@ -7,11 +7,18 @@ from openai import OpenAI
 
 
 def ai_vision(image_path, api_key):
-    # print(f"\n ai vision func called \n ")
-    with open(image_path, "rb") as f:
-        image_data = f.read()
-
-    base64_image = base64.b64encode(image_data).decode("utf-8")
+    print(f"\n ai vision func called \n ")
+    if 'https://' in str(image_path).lower():
+        # If image_path is a URL, use it as is
+        base64_image = None
+        url = image_path
+        print(f"Image URL: {url}")
+    else:
+        # If image_path is a file path, read the file and encode it as base64
+        with open(image_path, "rb") as f:
+            image_data = f.read()
+        base64_image = base64.b64encode(image_data).decode("utf-8")
+        url = f"data:image/jpeg;base64,{base64_image}"
 
     response = requests.post(
         url="https://openrouter.ai/api/v1/chat/completions",
@@ -31,7 +38,7 @@ def ai_vision(image_path, api_key):
                         {
                             "type": "image_url",
                             "image_url": {
-                                "url": f"data:image/jpeg;base64,{base64_image}"
+                                "url": url
                             }
                         }
                     ]
@@ -40,5 +47,14 @@ def ai_vision(image_path, api_key):
         })
     )
 
-    result = response.json()["choices"][0]["message"]["content"]
-    return result
+    try:
+        response = response.json()["choices"][0]["message"]["content"] 
+
+        print(f" \n line ~52 from vision vunc: the api response {response[:100]}") # use [:100] to see only the first 200 characters
+        return response
+    except KeyError as e:
+        print(f"Error: {e}")
+        print("API response:")
+        print(response.json())
+        response = None
+
