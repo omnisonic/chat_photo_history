@@ -8,6 +8,8 @@ import tempfile
 import mimetypes
 import vision_func 
 import tempfile
+from io import BytesIO
+
 
 
 #Streamlit page configuration
@@ -56,16 +58,28 @@ if'metadata' not in st.session_state:
 if 'vision_response' not in st.session_state:
     st.session_state.vision_response = None
 
+# Initialize a unique key for the file uploader in the session state if it doesn't exist
+if "file_uploader_key" not in st.session_state:
+    st.session_state["file_uploader_key"] = 0
+
 with header:
     st.title("AI CHAT with IPTC Metadata PHOTOS")
 
-# @st.cache_data
+
+
+# Assuming ExifToolHelper is from pyexiftool package
+
 def get_metadata(image):
-    # Use ExifTool to extract metadata
-    with ExifToolHelper() as et:
-        metadata = et.get_metadata(image)
-        print(f" line 71 inside get_metadata function ")
-        return metadata
+    try:
+        # Use ExifTool to extract metadata
+        with ExifToolHelper() as et:
+            metadata = et.get_metadata(image)
+            print(f"Metadata extracted successfully. frin exiftool {metadata}")
+            return metadata
+    except Exception as e:
+        st.error(f"An error occurred while extracting metadata: {e}")
+        return None
+
 
 # @st.cache_data
 def get_file_from_url(url):
@@ -88,15 +102,23 @@ def get_file_from_url(url):
         return None, None
 
 st.sidebar.header("Load From your Device")
-uploader = st.sidebar.file_uploader("Choose an image file", type=['jpg', 'jpeg', 'png', 'gif', 'tiff'])
+uploader = st.sidebar.file_uploader("Choose an image file", type=['jpg', 'jpeg', 'png', 'gif', 'tiff'], key=st.session_state["file_uploader_key"])
 # st.write("\n Line ~96: Uploader:", uploader)
 print(f" line 97 value of uploader  the variable assigned to file_uploader() {uploader} ")
 
 if uploader:
+    
     # st.session_state.clear()
-    st.session_state.image = uploader.name # .name to get the relative path from the uploader object
-    st.session_state.metadata = None
+    st.session_state.image = uploader # .name to get the relative path from the uploader object
+    # st.session_state.metadata = None
+    # st.session_state.vision_response = None
+    st.session_state["file_uploader_key"] += 1
+    st.rerun()
     print(f" \n line 101 value of st session_state image {st.session_state.image} ")
+
+
+
+
 st.sidebar.header("Load From URL")
 # upload from url
 with st.sidebar.form("url_form"):
@@ -107,7 +129,8 @@ with st.sidebar.form("url_form"):
     if submit_url:
   
         print(" line 109, URL form submission activated.")
-
+        # st.session_state.metadata = None
+        # st.session_state.vision_response = None
         # Validate URL
         try:
             result = urlparse(url)
@@ -169,18 +192,19 @@ with col1:
             # vision response for the sample image
             if st.session_state.image is None or st.session_state.image == "":
                 vision_response = vision_func.ai_vision("sample_photo.jpg", api_key)
-                print(f" \n line ~170 vision_response {vision_response}")
+                print(f" \n line ~170 vision_response {vision_response}[:100]")
                 st.session_state.vision_response = vision_response
+                print(f" \n line ~176 after session state assiged {st.session_state.vision_response[:100]}") # use [:100] to see only the first 200 characters
                 st.success('Success! Image Analyzed!', icon="✅")
-                st.write(vision_response)           
+                # st.write(vision_response)           
             else:
                 # in this case the vision response will be either a url or a file path which both are handle by the ai_vision function
                 print(f"line 170:  submit to ai vision button: {st.session_state.image}")
                 vision_response = vision_func.ai_vision(st.session_state.image, api_key)
-                print(f" \n line ~175 vision_response {vision_response}")
                 st.session_state.vision_response = vision_response
+                print(f" \n line ~176 after session state assiged {st.session_state.vision_response[:100]}") # use [:100] to see only the first 200 characters
                 st.success('Success! Image Analyzed!', icon="✅")
-                st.write(vision_response)
+                # st.write(vision_response)
     # get the meta data from the image
     with st.spinner("Loading..."):
         if st.button("Submit to Metadata Analysis", key="metadata-submit"):
@@ -191,6 +215,9 @@ with col1:
                 with open(uploaded_image.name, "wb") as f:
                     f.write(uploaded_image.getbuffer())
                     metadata = get_metadata(uploaded_image.name)
+                    st.session_state.metadata = metadata
+                    st.success('Success! Image Analyzed!', icon="✅")
+                    # st.write(metadata)
 
             elif 'https://' in str(st.session_state.image).lower():
                 print(f"Line 188: Image has https: {type(st.session_state.image)}")
@@ -249,7 +276,7 @@ with col2:
             st.session_state.messages.append({"role": "assistant", "content": "Hello 👋"})
             st.session_state.messages.append({"role": "assistant", "content": "I am a photo analysis bot 🤖"})
             st.session_state.messages.append({"role": "assistant", "content": "Please add a Photo by using the left hand sidebar 😊"})
-            st.session_state.messages.append({"role": "assistant", "content": "Then Submit Metadata Analysis Button to start! 😊"})
+            st.session_state.messages.append({"role": "assistant", "content": "Then Submit Metadata Analysis Button or Vision Analysis Button to start! 😊"})
 
     for msg in st.session_state.messages:
         message_container.chat_message(msg["role"]).write(msg["content"])
@@ -267,8 +294,8 @@ with col2:
         st.session_state.messages.append({"role": "user", "content": prompt})
         message_container.chat_message("user").write(prompt)
         response = client.chat.completions.create(
-            model="google/gemini-pro-vision",
-            messages=[{"role": "system", "content": f"You are answering questions about photo metadata. You specialize photo meta data.  Ask the user to submit the metadata if there is none. The metadata is: {st.session_state.metadata}. your vision response data is:{st.session_state.vision_response} "}] + st.session_state.messages + [{"role": "user", "content": prompt}],
+            model="meta-llama/llama-3-8b-instruct",
+            messages=[{"role": "system", "content": f"You are answering questions about photo metadata and vision response data. You specialize photo meta data and photo analysis. The user can submit metadata and vision response for you to use in your responses to the user questions. If you dont have the vision resonse or metadata, ask the user to submit either the metadata or vision response. The will be the submited metadata from an image analyzed by exiftool {st.session_state.metadata}. When there is vision response data or metadata you can chat with the user about it. This will be the vision response received from gemini-pro-vision api with submit to ai analysis button: {st.session_state.vision_response} "}] + st.session_state.messages + [{"role": "user", "content": prompt}],
         )
         msg = response.choices[0].message.content
         st.session_state.messages.append({"role": "assistant", "content": msg})
@@ -290,4 +317,9 @@ with col2:
         st.rerun()
         st.succsesss("Chat cleared")
 
+if st.session_state.vision_response:
+
+    print(f" \n END OF PAGE {st.session_state.vision_response[:100]}") # use [:100] to see only the first 200
+if st.session_state.metadata:    
+    print(f" \n END OF PAGE {st.session_state.metadata[:100]}") # use [:100] to see only the first 200
 # st.write(st.session_state) 
