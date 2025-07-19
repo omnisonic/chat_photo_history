@@ -2,6 +2,8 @@ title="editor.py"
 import streamlit as st
 import numpy as np
 import io
+import os
+from datetime import datetime
 from PIL import Image
 from exiftool import ExifToolHelper
 from exiftool.exceptions import ExifToolException
@@ -95,8 +97,11 @@ else:
     # Convert the UploadedFile to bytes
     image_bytes = st.session_state.image_file.getvalue() # Use session state variable
     
-    # Generate a unique filename and save the file to a temporary location on disk
-    unique_filename = f"{st.session_state.image_file.name}" # Use session state variable
+    # Get original filename and extension
+    original_name, extension = os.path.splitext(st.session_state.image_file.name)
+    # Generate a unique filename with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    unique_filename = f"{original_name}_metadata_updated_{timestamp}{extension}"
     file_path = unique_filename
     # file_path = f"./temp_{unique_filename}"
     with open(file_path, "wb") as f:
@@ -187,10 +192,10 @@ else:
                                     Error : {e}""")
                 print(f" args ={e.args}") # more detail on errors
     
-    st.write(f"Debug: show_download_button = {st.session_state.get('show_download_button', 'not set')}")
+    # st.write(f"Debug: show_download_button = {st.session_state.get('show_download_button', 'not set')}")
     # Display download button if save was successful
     if st.session_state.get('show_download_button', False):
-        st.write("Debug: Inside download button block")
+        # st.write("Debug: Inside download button block")
         st.success("Successfully updated metadata. You can now download the modified image.", icon="😁")
         # Define download_pressed locally or globally if needed elsewhere
         def download_pressed():

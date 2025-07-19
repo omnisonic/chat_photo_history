@@ -1,3 +1,6 @@
 *.un~
 .vscode/
 sandbox/
+*.jpg
+*.png
+
