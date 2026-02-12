@@ -1,5 +1,8 @@
 # 🎉 Open Files: A Streamlit Chatbot for Image Metadata Analysis 📸
 
+![Photo](images/screenshot-2026-02-11-at-10.01.57pm.webp)
+
+
 ## 📝 Overview
 🌟 This project analyzes image metadata and provides a comprehensive description of the image content. The chatbot uses the Gemini Pro AI vision API to extract metadata from images and generate a detailed response. Two modes are available: image analysis and image metadata extraction. 🤖
 
